@@ -21,7 +21,7 @@ tested on macOS.
 | Linux + Zsh | Not validated yet |
 | Bash | Planned |
 | Fish | Planned |
-| PowerShell/Windows | Planned |
+| PowerShell/Windows | PSReadLine is the existing recommended alternative |
 
 ## Goals
 
@@ -30,6 +30,13 @@ tested on macOS.
 - Accept or cancel a suggestion without losing the current buffer.
 - Keep the core independent from any particular shell or operating system.
 - Provide separate adapters for Zsh, Bash, Fish, and PowerShell.
+
+## Windows scope
+
+rRsReadLine focuses on macOS and Linux. Windows already has a mature shell
+history and prediction solution in PSReadLine, so a native rRsReadLine Windows
+adapter is intentionally deferred. The core remains portable so a future
+Windows integration can be added if a native implementation becomes useful.
 
 ## Try it with Zsh
 
@@ -51,7 +58,7 @@ Use Up/Down to navigate the list, Tab or Enter to accept the selected
 suggestion, and Escape to clear the list.
 
 Optional configuration is read from
-`~/.config/rrsreadline/config.toml`:
+`~/.config/rrsreadline/config.toml` (for both Zsh and Bash):
 
 ```toml
 matching = "prefix"
@@ -59,6 +66,25 @@ max_suggestions = 8
 case_sensitive = false
 history_file = "~/.zsh_history"
 ```
+
+## Bash
+
+The Bash adapter requires Bash 4 or newer because it uses writable
+`READLINE_LINE` and `READLINE_POINT` variables. The Bash 3.2 shipped with
+macOS is too old for full integration. Install a current Bash with Homebrew:
+
+```sh
+brew install bash
+```
+
+Then start that Bash and evaluate:
+
+```sh
+eval "$(rrsreadline init bash)"
+```
+
+Use Up/Down to navigate suggestions and Enter to submit the selected command.
+Tab remains Bash's native completion key.
 
 ## Development
 

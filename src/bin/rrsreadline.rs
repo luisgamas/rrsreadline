@@ -1,6 +1,7 @@
 use rrsreadline::config::Config;
 use rrsreadline::history;
 use rrsreadline::matching::Matcher;
+use rrsreadline::shell::bash;
 use rrsreadline::shell::zsh;
 
 fn main() {
@@ -10,12 +11,28 @@ fn main() {
             println!("rrsreadline {}", env!("CARGO_PKG_VERSION"));
         }
         Some("--help") | Some("-h") => print_help(),
-        Some("init") if args.next().as_deref() == Some("zsh") => {
-            print!("{}", zsh::generate());
-        }
+        Some("init") => match args.next().as_deref() {
+            Some("zsh") => print!("{}", zsh::generate()),
+            Some("bash") => print!("{}", bash::generate()),
+            _ => {
+                print_help();
+                std::process::exit(2);
+            }
+        },
         Some("suggest") => {
-            let query = args.collect::<Vec<_>>().join(" ");
-            if let Err(error) = suggest(&query) {
+            let mut values = args.collect::<Vec<_>>();
+            let shell = if values.first().map(String::as_str) == Some("--shell") {
+                values.remove(0);
+                if values.is_empty() {
+                    "zsh".to_owned()
+                } else {
+                    values.remove(0)
+                }
+            } else {
+                "zsh".to_owned()
+            };
+            let query = values.join(" ");
+            if let Err(error) = suggest(&shell, &query) {
                 eprintln!("rrsreadline: {error}");
                 std::process::exit(1);
             }
@@ -27,11 +44,11 @@ fn main() {
     }
 }
 
-fn suggest(query: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn suggest(shell: &str, query: &str) -> Result<(), Box<dyn std::error::Error>> {
     if query.is_empty() {
         return Ok(());
     }
-    let config = Config::load();
+    let config = Config::load_for_shell(shell);
     let history = history::load_file(&config.history_path())?;
     let matcher = Matcher::new(
         config.matching,
@@ -45,5 +62,7 @@ fn suggest(query: &str) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn print_help() {
-    println!("usage: rrsreadline <--version | --help | init zsh | suggest <query>>");
+    println!(
+        "usage: rrsreadline <--version | --help | init <zsh|bash> | suggest [--shell <shell>] <query>>"
+    );
 }

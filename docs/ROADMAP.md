@@ -21,8 +21,10 @@
 
 ## Fase 3 — Bash
 
-- [ ] Extraer la integración Bash del proyecto anterior.
-- [ ] Probar Bash 3.2 de macOS.
+- [x] Implementar el adaptador Bash independiente.
+- [x] Añadir pruebas PTY para Bash.
+- [x] Documentar la incompatibilidad del Bash 3.2 incluido con macOS.
+- [ ] Probar Bash 4+ de macOS mediante Homebrew.
 - [ ] Probar Bash moderno en Linux.
 
 ## Fase 4 — Distribución multiplataforma
@@ -31,3 +33,6 @@
 - [ ] Binarios para Intel y ARM.
 - [ ] Instalación y actualización seguras.
 - [ ] Documentación de configuración.
+
+Windows queda fuera del objetivo inmediato porque PSReadLine ya cubre esa
+experiencia. El núcleo seguirá preparado para una futura integración nativa.

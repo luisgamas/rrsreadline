@@ -13,9 +13,16 @@ concreta de historial. Esas responsabilidades pertenecen a adaptadores.
 
 ## Primera integración
 
-La primera integración será Zsh en macOS, usando ZLE. Después se añadirá Bash.
+La primera integración fue Zsh en macOS, usando ZLE. La siguiente es Bash 4+,
+usando `bind -x` y Readline. El Bash 3.2 distribuido con macOS no permite la
+actualización efectiva de `READLINE_LINE` desde un binding, por lo que no puede
+ofrecer la integración completa.
 Cada integración debe vivir en su propio módulo y tener pruebas específicas,
 porque los shells tienen modelos distintos para editar y redibujar la línea.
+
+Windows no es un objetivo inmediato: PSReadLine ya ofrece una solución nativa
+de historial y predicción. El núcleo sigue sin dependencias de Windows para
+que una futura integración propia siga siendo posible.
 
 ## Decisiones pendientes
 
@@ -23,4 +30,4 @@ porque los shells tienen modelos distintos para editar y redibujar la línea.
 - Renderizado inline frente a `POSTDISPLAY`/equivalentes del shell.
 - Persistencia y formato de cada historial.
 - Búsqueda fuzzy opcional.
-- Distribución por Homebrew, Linux y Windows.
+- Distribución por Homebrew y Linux.

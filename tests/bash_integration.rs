@@ -1,0 +1,155 @@
+//! End-to-end check for the Bash/Readline adapter.
+
+#![cfg(unix)]
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
+use nix::poll::{PollFd, PollFlags, PollTimeout, poll};
+use nix::pty::{ForkptyResult, Winsize, forkpty};
+use nix::sys::signal::{Signal, kill};
+use nix::sys::wait::waitpid;
+use nix::unistd::{Pid, execvp, read, write};
+use std::ffi::CString;
+use std::os::fd::{AsFd, OwnedFd};
+use std::path::PathBuf;
+use std::process::Command;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+struct BashSession {
+    master: OwnedFd,
+    child: Pid,
+    fake_home: PathBuf,
+}
+
+impl BashSession {
+    fn spawn(history: &str) -> Self {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let fake_home = std::env::temp_dir().join(format!(
+            "rrsreadline-bash-pty-{}-{suffix}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&fake_home).expect("create fake HOME");
+        std::fs::write(fake_home.join(".bash_history"), history).expect("write bash history");
+
+        let winsize = Winsize {
+            ws_row: 40,
+            ws_col: 120,
+            ws_xpixel: 0,
+            ws_ypixel: 0,
+        };
+        // SAFETY: the child branch only sets environment variables and calls
+        // execvp before returning control to Rust code.
+        match unsafe { forkpty(Some(&winsize), None) }.expect("forkpty") {
+            ForkptyResult::Parent { child, master } => Self {
+                master,
+                child,
+                fake_home,
+            },
+            ForkptyResult::Child => {
+                // SAFETY: this is the single-threaded child immediately after
+                // fork and the variables are used before exec.
+                unsafe {
+                    std::env::set_var("HOME", &fake_home);
+                    std::env::set_var("TERM", "xterm-256color");
+                }
+                let bash = CString::new("bash").expect("no NUL");
+                let no_rc = CString::new("--norc").expect("no NUL");
+                let no_profile = CString::new("--noprofile").expect("no NUL");
+                let interactive = CString::new("-i").expect("no NUL");
+                let _ = execvp(&bash, &[bash.clone(), no_rc, no_profile, interactive]);
+                std::process::exit(127);
+            }
+        }
+    }
+
+    fn send(&self, bytes: &[u8]) {
+        write(self.master.as_fd(), bytes).expect("write to pty master");
+    }
+
+    fn send_and_drain(&self, bytes: &[u8]) -> Vec<u8> {
+        self.send(bytes);
+        std::thread::sleep(Duration::from_millis(120));
+        self.drain(Duration::from_millis(250))
+    }
+
+    fn drain(&self, quiet_for: Duration) -> Vec<u8> {
+        let mut output = Vec::new();
+        let deadline = Instant::now() + quiet_for;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+            let mut fds = [PollFd::new(self.master.as_fd(), PollFlags::POLLIN)];
+            let timeout = PollTimeout::try_from(remaining).unwrap_or(PollTimeout::MAX);
+            if poll(&mut fds, timeout).unwrap_or(0) == 0 {
+                break;
+            }
+            let mut buffer = [0u8; 16_384];
+            match read(self.master.as_fd(), &mut buffer) {
+                Ok(0) | Err(_) => break,
+                Ok(size) => output.extend_from_slice(&buffer[..size]),
+            }
+        }
+        output
+    }
+}
+
+impl Drop for BashSession {
+    fn drop(&mut self) {
+        let _ = kill(self.child, Signal::SIGKILL);
+        let _ = waitpid(self.child, None);
+        let _ = std::fs::remove_dir_all(&self.fake_home);
+    }
+}
+
+#[test]
+fn bash_can_render_navigate_and_keep_a_suggestion_selected() {
+    if !supports_writable_readline_line() {
+        eprintln!("skipping Bash integration test: Bash 4+ is required");
+        return;
+    }
+    let binary = env!("CARGO_BIN_EXE_rrsreadline");
+    let history = "git status\ngit branch\ngit log\n";
+    let session = BashSession::spawn(history);
+    let setup = format!("eval \"$({} init bash)\"\n", shell_single_quote(binary));
+    session.send_and_drain(setup.as_bytes());
+
+    let typed = session.send_and_drain(b"git");
+    let typed_text = String::from_utf8_lossy(&typed);
+    assert!(
+        typed_text.contains("git log")
+            && typed_text.contains("git branch")
+            && typed_text.contains("git status"),
+        "expected suggestions after typing git, got:\n{typed_text}"
+    );
+
+    let selected = session.send_and_drain(b"\x1b[B");
+    let selected_text = String::from_utf8_lossy(&selected);
+    assert!(
+        selected_text.contains("❯ git log") && selected_text.ends_with("git log"),
+        "expected Down to select and fill the newest suggestion, got:\n{selected_text}"
+    );
+
+    let tabbed = session.send_and_drain(b"\t");
+    let tabbed_text = String::from_utf8_lossy(&tabbed);
+    assert!(
+        tabbed_text.contains("❯ git log") && tabbed_text.ends_with("git log"),
+        "expected Tab to preserve the selected suggestion, got:\n{tabbed_text}"
+    );
+
+    session.send(b"\x03");
+}
+
+fn shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn supports_writable_readline_line() -> bool {
+    Command::new("bash")
+        .args(["-c", "(( BASH_VERSINFO[0] >= 4 ))"])
+        .status()
+        .is_ok_and(|status| status.success())
+}

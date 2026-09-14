@@ -3,7 +3,8 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const DEFAULT_HISTORY_FILE: &str = "~/.zsh_history";
+const DEFAULT_ZSH_HISTORY_FILE: &str = "~/.zsh_history";
+const DEFAULT_BASH_HISTORY_FILE: &str = "~/.bash_history";
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(default)]
@@ -20,14 +21,18 @@ impl Default for Config {
             matching: MatchingMode::Prefix,
             max_suggestions: 8,
             case_sensitive: false,
-            history_file: DEFAULT_HISTORY_FILE.to_owned(),
+            history_file: DEFAULT_ZSH_HISTORY_FILE.to_owned(),
         }
     }
 }
 
 impl Config {
     pub fn load() -> Self {
-        let mut config = Self::default();
+        Self::load_for_shell("zsh")
+    }
+
+    pub fn load_for_shell(shell: &str) -> Self {
+        let mut config = Self::for_shell(shell);
         let Some(home) = home_dir() else {
             return config;
         };
@@ -35,8 +40,36 @@ impl Config {
         let Ok(contents) = fs::read_to_string(path) else {
             return config;
         };
-        if let Ok(parsed) = toml::from_str::<Self>(&contents) {
-            config = parsed;
+        let Ok(table) = toml::from_str::<toml::Value>(&contents) else {
+            return config;
+        };
+        if let Some(value) = table.get("matching")
+            && let Ok(parsed) = value.clone().try_into()
+        {
+            config.matching = parsed;
+        }
+        if let Some(value) = table.get("max_suggestions")
+            && let Some(parsed) = value.as_integer().and_then(|n| usize::try_from(n).ok())
+        {
+            config.max_suggestions = parsed;
+        }
+        if let Some(value) = table.get("case_sensitive")
+            && let Some(parsed) = value.as_bool()
+        {
+            config.case_sensitive = parsed;
+        }
+        if let Some(value) = table.get("history_file")
+            && let Some(parsed) = value.as_str()
+        {
+            config.history_file = parsed.to_owned();
+        }
+        config
+    }
+
+    fn for_shell(shell: &str) -> Self {
+        let mut config = Self::default();
+        if shell == "bash" {
+            config.history_file = DEFAULT_BASH_HISTORY_FILE.to_owned();
         }
         config
     }
@@ -80,6 +113,14 @@ mod tests {
         assert_eq!(config.matching, MatchingMode::Prefix);
         assert_eq!(config.max_suggestions, 8);
         assert!(!config.case_sensitive);
-        assert_eq!(config.history_file, "~/.zsh_history");
+        assert_eq!(config.history_file, DEFAULT_ZSH_HISTORY_FILE);
+    }
+
+    #[test]
+    fn bash_uses_bash_history_by_default() {
+        assert_eq!(
+            Config::for_shell("bash").history_file,
+            DEFAULT_BASH_HISTORY_FILE
+        );
     }
 }
