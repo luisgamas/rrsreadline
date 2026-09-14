@@ -7,6 +7,7 @@
 - [x] Implementar estado de selección.
 - [x] Crear el primer adaptador Zsh/ZLE.
 - [x] Mostrar y navegar sugerencias desde Zsh.
+- [x] Automatizar la prueba Zsh con un pseudo-terminal.
 - [ ] Añadir deduplicación configurable.
 - [ ] Añadir carga/escritura atómica del historial.
 

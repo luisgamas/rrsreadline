@@ -12,3 +12,6 @@ toml = "0.8"
 
 [dev-dependencies]
 pretty_assertions = "1"
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { version = "0.31.3", features = ["poll", "process", "signal", "term"] }

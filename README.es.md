@@ -70,6 +70,10 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
+En sistemas Unix, `cargo test` también ejecuta una prueba de integración de
+Zsh dentro de un pseudo-terminal. Requiere que `zsh` esté disponible en
+`PATH`.
+
 La arquitectura y el roadmap están documentados en
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y
 [`docs/ROADMAP.md`](docs/ROADMAP.md).
