@@ -210,7 +210,11 @@ fn zsh_preserves_completion_matcher_styles() {
         "autoload -Uz compinit\ncompinit -i\nzstyle ':completion:*' matcher-list 'm:{{a-zA-Z}}={{A-Za-z}}'\neval \"$({} init zsh)\"\n_rrsreadline_test_dump_buffer() {{ print -r -- \"\\nRRS_BUFFER=<$BUFFER>\\n\"; }}\nzle -N _rrsreadline_test_dump_buffer\nbindkey '^X^V' _rrsreadline_test_dump_buffer\n",
         shell_single_quote(binary)
     );
-    session.send_and_drain(setup.as_bytes());
+    // `compinit` can take longer on a clean CI runner than the short quiet
+    // window used by the regular key-event helper. Wait for the complete
+    // setup sequence before sending the test input.
+    session.send(setup.as_bytes());
+    session.drain(Duration::from_secs(2));
 
     session.send_and_drain(b"cd doc");
     session.send_and_drain(b"\t");
