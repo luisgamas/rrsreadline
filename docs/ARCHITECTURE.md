@@ -13,10 +13,11 @@ concreta de historial. Esas responsabilidades pertenecen a adaptadores.
 
 ## Primera integración
 
-La primera integración fue Zsh en macOS, usando ZLE. La siguiente es Bash 4+,
-usando `bind -x` y Readline. El Bash 3.2 distribuido con macOS no permite la
+La integración Zsh usa ZLE y la integración Bash requiere Bash 4+ con
+`bind -x` y Readline. El Bash 3.2 distribuido con macOS no permite la
 actualización efectiva de `READLINE_LINE` desde un binding, por lo que no puede
-ofrecer la integración completa.
+ofrecer la integración completa. Ambas integraciones tienen pruebas PTY y se
+validan en macOS y Linux mediante CI.
 Cada integración debe vivir en su propio módulo y tener pruebas específicas,
 porque los shells tienen modelos distintos para editar y redibujar la línea.
 
@@ -30,4 +31,5 @@ que una futura integración propia siga siendo posible.
 - Renderizado inline frente a `POSTDISPLAY`/equivalentes del shell.
 - Persistencia y formato de cada historial.
 - Búsqueda fuzzy opcional.
-- Distribución por Homebrew y Linux.
+- Distribución mediante releases verificadas para macOS y Linux.
+- Instalación local sin modificar los archivos de inicio del shell.

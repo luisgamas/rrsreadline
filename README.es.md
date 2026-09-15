@@ -9,19 +9,19 @@ cada shell. La documentación principal está disponible en
 
 ## Estado
 
-El núcleo funcional está listo y existe una primera integración experimental
-con Zsh. Esta versión todavía no es completamente multiplataforma: el núcleo
-está diseñado para ser portable, pero la integración disponible actualmente es
-Zsh/ZLE y ha sido probada en macOS.
+El núcleo y las integraciones de Zsh/ZLE y Bash/Readline están funcionales.
+Las integraciones Unix se validan en macOS y Linux mediante pruebas locales y
+de CI. Windows queda deliberadamente pospuesto porque PSReadLine ya ofrece
+esta experiencia.
 
 ## Compatibilidad
 
 | Componente | Estado |
 | --- | --- |
 | Motor de sugerencias Rust | Portable por diseño |
-| macOS + Zsh | Primera integración funcional |
-| Linux + Zsh | Todavía no validado |
-| Bash | Planeado |
+| macOS + Zsh | Validado |
+| Linux + Zsh | Validado en CI |
+| Bash 4+ | Validado en macOS y Linux |
 | Fish | Planeado |
 | PowerShell/Windows | PSReadLine es la alternativa recomendada |
 
@@ -39,6 +39,32 @@ rRsReadLine se enfocará en macOS y Linux. Windows ya cuenta con una solución
 madura de historial y predicción mediante PSReadLine, por lo que el adaptador
 nativo de rRsReadLine para Windows queda deliberadamente pospuesto. El núcleo
 seguirá siendo portable por si más adelante resulta útil crear esa integración.
+
+## Instalación
+
+### Binario precompilado
+
+El instalador descarga el binario de release para macOS o Linux, verifica su
+checksum SHA-256 y lo instala en `~/.local/bin` sin requerir Rust:
+
+```sh
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/luisgamas/rrsreadline/main/scripts/install.sh \
+  | sh
+```
+
+Usa `RRSREADLINE_VERSION=vX.Y.Z` para instalar una versión específica o
+`RRSREADLINE_INSTALL_DIR=/ruta/personalizada` para elegir otro destino. El
+instalador no modifica los archivos de inicio del shell.
+
+### Compilar desde el código fuente
+
+Los desarrolladores con Rust pueden instalar directamente la versión más
+reciente del código fuente:
+
+```sh
+cargo install --git https://github.com/luisgamas/rrsreadline --locked
+```
 
 ## Probarlo con Zsh
 
@@ -101,9 +127,10 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-En sistemas Unix, `cargo test` también ejecuta una prueba de integración de
-Zsh dentro de un pseudo-terminal. Requiere que `zsh` esté disponible en
-`PATH`.
+En sistemas Unix, `cargo test` ejecuta pruebas de integración PTY para Bash y
+Zsh. Las pruebas de Bash requieren Bash 4+ y las de Zsh requieren `zsh` en
+`PATH`. Las mismas comprobaciones se ejecutan para macOS y Linux en GitHub
+Actions.
 
 La arquitectura y el roadmap están documentados en
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y

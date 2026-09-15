@@ -7,19 +7,19 @@ Spanish documentation is available in [`README.es.md`](README.es.md).
 
 ## Status
 
-The core engine is functional and the first experimental Zsh integration is
-available. This release is not fully cross-platform yet: the core is designed
-to be portable, but the currently working integration is Zsh/ZLE and has been
-tested on macOS.
+The core engine and the Zsh/ZLE and Bash/Readline integrations are functional.
+The Unix integrations are validated on macOS and Linux through local and CI
+tests. Windows remains intentionally deferred because PSReadLine already
+provides this experience.
 
 ## Compatibility
 
 | Component | Status |
 | --- | --- |
 | Rust suggestion engine | Portable by design |
-| macOS + Zsh | First working integration |
-| Linux + Zsh | Not validated yet |
-| Bash | Planned |
+| macOS + Zsh | Validated |
+| Linux + Zsh | Validated in CI |
+| Bash 4+ | Validated on macOS and Linux |
 | Fish | Planned |
 | PowerShell/Windows | PSReadLine is the existing recommended alternative |
 
@@ -37,6 +37,31 @@ rRsReadLine focuses on macOS and Linux. Windows already has a mature shell
 history and prediction solution in PSReadLine, so a native rRsReadLine Windows
 adapter is intentionally deferred. The core remains portable so a future
 Windows integration can be added if a native implementation becomes useful.
+
+## Installation
+
+### Prebuilt binary
+
+The installer downloads the release binary for macOS or Linux, verifies its
+SHA-256 checksum, and installs it into `~/.local/bin` without requiring Rust:
+
+```sh
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/luisgamas/rrsreadline/main/scripts/install.sh \
+  | sh
+```
+
+Set `RRSREADLINE_VERSION=vX.Y.Z` to install a specific release or
+`RRSREADLINE_INSTALL_DIR=/custom/path` to choose another destination. The
+installer does not modify shell startup files.
+
+### Build from source
+
+Developers with Rust can install the latest source directly:
+
+```sh
+cargo install --git https://github.com/luisgamas/rrsreadline --locked
+```
 
 ## Try it with Zsh
 
@@ -97,8 +122,9 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-On Unix systems, `cargo test` also runs a Zsh pseudo-terminal integration
-test. It requires `zsh` to be available on `PATH`.
+On Unix systems, `cargo test` runs Bash and Zsh pseudo-terminal integration
+tests. Bash tests require Bash 4+ and Zsh tests require `zsh` on `PATH`.
+The same checks run for macOS and Linux in GitHub Actions.
 
 The architecture and implementation roadmap are documented in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and

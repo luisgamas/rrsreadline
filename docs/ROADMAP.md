@@ -8,7 +8,7 @@
 - [x] Crear el primer adaptador Zsh/ZLE.
 - [x] Mostrar y navegar sugerencias desde Zsh.
 - [x] Automatizar la prueba Zsh con un pseudo-terminal.
-- [ ] Añadir deduplicación configurable.
+- [x] Deduplicar comandos repetidos y aplicar el límite después de deduplicar.
 - [ ] Añadir carga/escritura atómica del historial.
 
 ## Fase 2 — macOS y Zsh
@@ -24,15 +24,15 @@
 - [x] Implementar el adaptador Bash independiente.
 - [x] Añadir pruebas PTY para Bash.
 - [x] Documentar la incompatibilidad del Bash 3.2 incluido con macOS.
-- [ ] Probar Bash 4+ de macOS mediante Homebrew.
-- [ ] Probar Bash moderno en Linux.
+- [x] Probar Bash 4+ de macOS mediante Homebrew.
+- [x] Probar Bash moderno en Linux mediante CI.
 
 ## Fase 4 — Distribución multiplataforma
 
-- [ ] CI para macOS, Linux y Windows.
-- [ ] Binarios para Intel y ARM.
-- [ ] Instalación y actualización seguras.
-- [ ] Documentación de configuración.
+- [x] CI para macOS y Linux.
+- [x] Binarios para Intel y ARM64.
+- [x] Instalación verificada mediante checksum SHA-256.
+- [x] Documentación de instalación y configuración.
 
 Windows queda fuera del objetivo inmediato porque PSReadLine ya cubre esa
 experiencia. El núcleo seguirá preparado para una futura integración nativa.
