@@ -207,19 +207,18 @@ fn zsh_preserves_completion_matcher_styles() {
     let binary = env!("CARGO_BIN_EXE_rrsreadline");
     let session = ZshSession::spawn("git status\n");
     let setup = format!(
-        "autoload -Uz compinit && compinit\nzstyle ':completion:*' menu no\nzstyle ':completion:*' matcher-list 'm:{{a-zA-Z}}={{A-Za-z}}'\neval \"$({} init zsh)\"\n",
+        "autoload -Uz compinit && compinit\nzstyle ':completion:*' matcher-list 'm:{{a-zA-Z}}={{A-Za-z}}'\neval \"$({} init zsh)\"\n_rrsreadline_test_dump_buffer() {{ print -r -- \"\\nRRS_BUFFER=<$BUFFER>\\n\"; }}\nzle -N _rrsreadline_test_dump_buffer\nbindkey '^X^V' _rrsreadline_test_dump_buffer\n",
         shell_single_quote(binary)
     );
     session.send_and_drain(setup.as_bytes());
 
     session.send_and_drain(b"cd doc");
     session.send_and_drain(b"\t");
-    session.send_and_drain(b"\r");
-    let working_directory = session.send_and_drain(b"pwd\r");
-    let working_directory_text = String::from_utf8_lossy(&working_directory);
+    let buffer_dump = session.send_and_drain(b"\x18\x16");
+    let buffer_dump_text = String::from_utf8_lossy(&buffer_dump);
     assert!(
-        working_directory_text.contains("Documents"),
-        "expected the configured case-insensitive matcher to complete Documents, got:\n{working_directory_text}"
+        buffer_dump_text.contains("Documents"),
+        "expected the configured case-insensitive matcher to complete Documents, got:\n{buffer_dump_text}"
     );
 
     session.send(b"\x03");
