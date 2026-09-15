@@ -69,6 +69,16 @@ curl --fail --silent --show-error --location \
   | sh -s -- --shell zsh
 ```
 
+### Installation safety
+
+The installer uses HTTPS, verifies the downloaded release archive against the
+published SHA-256 checksums before installing it, writes only to the selected
+binary directory and shell startup file, creates a backup before the first
+startup-file change, and does not require `sudo`. The default command executes
+the installer script from the repository's `main` branch; review or pin the
+script and release in audited environments instead of using an unpinned
+`curl | sh` command.
+
 ### Build from source
 
 Developers with Rust can install the latest source directly:

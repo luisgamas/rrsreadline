@@ -71,6 +71,16 @@ curl --fail --silent --show-error --location \
   | sh -s -- --shell zsh
 ```
 
+### Seguridad de la instalación
+
+El instalador usa HTTPS, verifica el archivo de release descargado contra los
+checksums SHA-256 publicados antes de instalarlo, solo escribe en el directorio
+del binario y el archivo de inicio seleccionados, crea un respaldo antes de la
+primera modificación y no requiere `sudo`. El comando predeterminado ejecuta el
+script desde la rama `main`; en entornos auditados conviene revisar o fijar el
+script y la versión del release en lugar de usar un comando `curl | sh` sin
+fijar.
+
 ### Compilar desde el código fuente
 
 Los desarrolladores con Rust pueden instalar directamente la versión más
