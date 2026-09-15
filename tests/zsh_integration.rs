@@ -159,6 +159,18 @@ fn zsh_escape_hides_predictions_for_native_history() {
 
     session.send_and_drain(b"git");
     session.send_and_drain(b"\x1b");
+    let shown = session.send_and_drain(b"\x1b[12~");
+    let shown_text = String::from_utf8_lossy(&shown);
+    assert!(
+        shown_text.contains("git log"),
+        "expected F2 to show predictions again, got:\n{shown_text}"
+    );
+    let hidden = session.send_and_drain(b"\x1b[12~");
+    let hidden_text = String::from_utf8_lossy(&hidden);
+    assert!(
+        !hidden_text.contains("git log"),
+        "expected F2 to hide predictions, got:\n{hidden_text}"
+    );
     let mut history_output = Vec::new();
     for _ in 0..4 {
         history_output.extend(session.send_and_drain(b"\x1b[A"));
