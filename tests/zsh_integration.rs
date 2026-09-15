@@ -147,6 +147,32 @@ fn zsh_can_render_navigate_and_accept_a_suggestion() {
 }
 
 #[test]
+fn zsh_escape_hides_predictions_for_native_history() {
+    let binary = env!("CARGO_BIN_EXE_rrsreadline");
+    let history = "git status\necho RRS_ZSH_OLDER\ngit log\n";
+    let session = ZshSession::spawn(history);
+    let setup = format!(
+        "fc -R ~/.zsh_history\neval \"$({} init zsh)\"\n",
+        shell_single_quote(binary)
+    );
+    session.send_and_drain(setup.as_bytes());
+
+    session.send_and_drain(b"git");
+    session.send_and_drain(b"\x1b");
+    let mut history_output = Vec::new();
+    for _ in 0..4 {
+        history_output.extend(session.send_and_drain(b"\x1b[A"));
+    }
+    let history_text = String::from_utf8_lossy(&history_output);
+    assert!(
+        history_text.contains("git log") && !history_text.contains("❯"),
+        "expected Escape to hide predictions and Up to use native history, got:\n{history_text}"
+    );
+
+    session.send(b"\x03");
+}
+
+#[test]
 fn zsh_preserves_native_tab_completion() {
     let binary = env!("CARGO_BIN_EXE_rrsreadline");
     let session = ZshSession::spawn("git status\n");

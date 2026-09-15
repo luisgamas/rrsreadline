@@ -16,6 +16,7 @@ pub fn generate() -> String {
 typeset -g _RRSREADLINE_BIN={executable}
 typeset -g _RRSREADLINE_QUERY=""
 typeset -g _RRSREADLINE_SELECTED=-1
+typeset -g _RRSREADLINE_PREDICTIONS_HIDDEN=0
 typeset -ga _RRSREADLINE_SUGGESTIONS
 
 _rrsreadline_refresh() {{
@@ -25,6 +26,14 @@ _rrsreadline_refresh() {{
     if [[ "$query" != "$_RRSREADLINE_QUERY" ]]; then
         _RRSREADLINE_QUERY="$query"
         _RRSREADLINE_SELECTED=-1
+        _RRSREADLINE_PREDICTIONS_HIDDEN=0
+    fi
+
+    if (( _RRSREADLINE_PREDICTIONS_HIDDEN )); then
+        _RRSREADLINE_SUGGESTIONS=()
+        _RRSREADLINE_SELECTED=-1
+        POSTDISPLAY=""
+        return
     fi
 
     _RRSREADLINE_SUGGESTIONS=()
@@ -63,7 +72,7 @@ _rrsreadline_pre_redraw() {{
 }}
 
 _rrsreadline_up() {{
-    if (( ${{#_RRSREADLINE_SUGGESTIONS}} > 0 )); then
+    if (( _RRSREADLINE_PREDICTIONS_HIDDEN == 0 && ${{#_RRSREADLINE_SUGGESTIONS}} > 0 )); then
         if (( _RRSREADLINE_SELECTED < 0 )); then
             _RRSREADLINE_SELECTED=$(( ${{#_RRSREADLINE_SUGGESTIONS}} - 1 ))
         else
@@ -72,15 +81,21 @@ _rrsreadline_up() {{
         zle redisplay
     else
         zle .up-line-or-history
+        _RRSREADLINE_QUERY="${{BUFFER[1,CURSOR]}}"
+        _RRSREADLINE_PREDICTIONS_HIDDEN=1
+        zle redisplay
     fi
 }}
 
 _rrsreadline_down() {{
-    if (( ${{#_RRSREADLINE_SUGGESTIONS}} > 0 )); then
+    if (( _RRSREADLINE_PREDICTIONS_HIDDEN == 0 && ${{#_RRSREADLINE_SUGGESTIONS}} > 0 )); then
         _RRSREADLINE_SELECTED=$(( (_RRSREADLINE_SELECTED + 1) % ${{#_RRSREADLINE_SUGGESTIONS}} ))
         zle redisplay
     else
         zle .down-line-or-history
+        _RRSREADLINE_QUERY="${{BUFFER[1,CURSOR]}}"
+        _RRSREADLINE_PREDICTIONS_HIDDEN=1
+        zle redisplay
     fi
 }}
 
@@ -105,8 +120,19 @@ _rrsreadline_tab() {{
 }}
 
 _rrsreadline_cancel() {{
+    _RRSREADLINE_PREDICTIONS_HIDDEN=1
     POSTDISPLAY=""
     _RRSREADLINE_SELECTED=-1
+    zle redisplay
+}}
+
+_rrsreadline_toggle_predictions() {{
+    if (( _RRSREADLINE_PREDICTIONS_HIDDEN )); then
+        _RRSREADLINE_PREDICTIONS_HIDDEN=0
+    else
+        _RRSREADLINE_PREDICTIONS_HIDDEN=1
+        _RRSREADLINE_SELECTED=-1
+    fi
     zle redisplay
 }}
 
@@ -116,6 +142,7 @@ zle -N _rrsreadline_accept _rrsreadline_accept
 zle -N _rrsreadline_tab _rrsreadline_tab
 zle -N accept-line _rrsreadline_accept
 zle -N escape _rrsreadline_cancel
+zle -N _rrsreadline_toggle_predictions _rrsreadline_toggle_predictions
 zle -N zle-line-pre-redraw _rrsreadline_pre_redraw
 bindkey '^[[A' up-line-or-history
 bindkey '^[[B' down-line-or-history
@@ -123,6 +150,7 @@ bindkey '^M' accept-line
 bindkey '^I' _rrsreadline_tab
 bindkey '\e' escape
 bindkey '^[[Z' reverse-menu-complete
+bindkey '^[[12~' _rrsreadline_toggle_predictions
 "#
     )
 }
@@ -143,6 +171,8 @@ mod tests {
         assert!(script.contains("zle -N _rrsreadline_tab _rrsreadline_tab"));
         assert!(script.contains("zle expand-or-complete"));
         assert!(script.contains("bindkey '^I' _rrsreadline_tab"));
+        assert!(script.contains("_RRSREADLINE_PREDICTIONS_HIDDEN=1"));
+        assert!(script.contains("bindkey '^[[12~' _rrsreadline_toggle_predictions"));
         assert!(script.contains("suggest \"$query\""));
     }
 
