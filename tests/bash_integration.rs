@@ -22,6 +22,10 @@ struct BashSession {
 
 impl BashSession {
     fn spawn(history: &str) -> Self {
+        Self::spawn_with_config(history, None)
+    }
+
+    fn spawn_with_config(history: &str, config: Option<&str>) -> Self {
         let suffix = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|duration| duration.as_nanos())
@@ -32,6 +36,11 @@ impl BashSession {
         ));
         std::fs::create_dir_all(&fake_home).expect("create fake HOME");
         std::fs::write(fake_home.join(".bash_history"), history).expect("write bash history");
+        if let Some(config) = config {
+            let config_dir = fake_home.join(".config/rrsreadline");
+            std::fs::create_dir_all(&config_dir).expect("create config directory");
+            std::fs::write(config_dir.join("config.toml"), config).expect("write config");
+        }
 
         let winsize = Winsize {
             ws_row: 40,
@@ -112,32 +121,57 @@ fn bash_can_render_navigate_and_keep_a_suggestion_selected() {
         return;
     }
     let binary = env!("CARGO_BIN_EXE_rrsreadline");
-    let history = "git status\ngit branch\ngit log\n";
+    let history = "echo RRS_BASH_STATUS\necho RRS_BASH_BRANCH\necho RRS_BASH_LOG\n";
     let session = BashSession::spawn(history);
     let setup = format!("eval \"$({} init bash)\"\n", shell_single_quote(binary));
     session.send_and_drain(setup.as_bytes());
 
-    let typed = session.send_and_drain(b"git");
+    let typed = session.send_and_drain(b"echo");
     let typed_text = String::from_utf8_lossy(&typed);
     assert!(
-        typed_text.contains("git log")
-            && typed_text.contains("git branch")
-            && typed_text.contains("git status"),
-        "expected suggestions after typing git, got:\n{typed_text}"
+        typed_text.contains("echo RRS_BASH_LOG")
+            && typed_text.contains("echo RRS_BASH_BRANCH")
+            && typed_text.contains("echo RRS_BASH_STATUS"),
+        "expected suggestions after typing echo, got:\n{typed_text}"
     );
 
     let selected = session.send_and_drain(b"\x1b[B");
     let selected_text = String::from_utf8_lossy(&selected);
     assert!(
-        selected_text.contains("❯ git log") && selected_text.ends_with("git log"),
+        selected_text.contains("❯ echo RRS_BASH_LOG")
+            && selected_text.ends_with("echo RRS_BASH_LOG"),
         "expected Down to select and fill the newest suggestion, got:\n{selected_text}"
     );
 
-    let tabbed = session.send_and_drain(b"\t");
-    let tabbed_text = String::from_utf8_lossy(&tabbed);
+    let accepted = session.send_and_drain(b"\r");
+    let accepted_text = String::from_utf8_lossy(&accepted);
     assert!(
-        tabbed_text.contains("❯ git log") && tabbed_text.ends_with("git log"),
-        "expected Tab to preserve the selected suggestion, got:\n{tabbed_text}"
+        accepted_text.contains("RRS_BASH_LOG"),
+        "expected Enter to accept the selected suggestion, got:\n{accepted_text}"
+    );
+
+    session.send(b"\x03");
+}
+
+#[test]
+fn bash_honors_configured_suggestion_limit() {
+    if !supports_writable_readline_line() {
+        eprintln!("skipping Bash integration test: Bash 4+ is required");
+        return;
+    }
+    let binary = env!("CARGO_BIN_EXE_rrsreadline");
+    let history = "git one\ngit two\ngit three\n";
+    let config = "max_suggestions = 2\n";
+    let session = BashSession::spawn_with_config(history, Some(config));
+    let setup = format!("eval \"$({} init bash)\"\n", shell_single_quote(binary));
+    session.send_and_drain(setup.as_bytes());
+
+    let typed = session.send_and_drain(b"git");
+    let typed_text = String::from_utf8_lossy(&typed);
+    assert!(typed_text.contains("git three") && typed_text.contains("git two"));
+    assert!(
+        !typed_text.contains("git one"),
+        "expected the configured limit to omit the oldest suggestion, got:\n{typed_text}"
     );
 
     session.send(b"\x03");
