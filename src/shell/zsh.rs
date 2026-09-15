@@ -115,7 +115,9 @@ _rrsreadline_tab() {{
     if (( _RRSREADLINE_SELECTED >= 0 && _RRSREADLINE_SELECTED < ${{#_RRSREADLINE_SUGGESTIONS}} )); then
         _rrsreadline_accept
     else
-        zle _rrsreadline_native_expand_or_complete
+        local before="$BUFFER"
+        zle expand-or-complete
+        [[ "$BUFFER" == "$before" ]] && zle .expand-or-complete
     fi
 }}
 
@@ -140,7 +142,6 @@ zle -N up-line-or-history _rrsreadline_up
 zle -N down-line-or-history _rrsreadline_down
 zle -N _rrsreadline_accept _rrsreadline_accept
 zle -N _rrsreadline_tab _rrsreadline_tab
-zle -A expand-or-complete _rrsreadline_native_expand_or_complete
 zle -N accept-line _rrsreadline_accept
 zle -N escape _rrsreadline_cancel
 zle -N _rrsreadline_toggle_predictions _rrsreadline_toggle_predictions
@@ -170,10 +171,8 @@ mod tests {
         assert!(script.contains("zle -N zle-line-pre-redraw"));
         assert!(script.contains("zle -N up-line-or-history"));
         assert!(script.contains("zle -N _rrsreadline_tab _rrsreadline_tab"));
-        assert!(script.contains("zle _rrsreadline_native_expand_or_complete"));
-        assert!(
-            script.contains("zle -A expand-or-complete _rrsreadline_native_expand_or_complete")
-        );
+        assert!(script.contains("zle expand-or-complete"));
+        assert!(script.contains("[[ \"$BUFFER\" == \"$before\" ]] && zle .expand-or-complete"));
         assert!(script.contains("bindkey '^I' _rrsreadline_tab"));
         assert!(script.contains("_RRSREADLINE_PREDICTIONS_HIDDEN=1"));
         assert!(script.contains("bindkey '^[[12~' _rrsreadline_toggle_predictions"));
