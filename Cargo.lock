@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "rrsreadline"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "nix",
  "pretty_assertions",
