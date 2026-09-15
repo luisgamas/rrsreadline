@@ -1,4 +1,5 @@
 use crate::config::MatchingMode;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Suggestion {
@@ -27,6 +28,7 @@ impl Matcher {
         }
 
         let normalized_query = self.normalize(query);
+        let mut seen = HashSet::new();
         entries
             .iter()
             .rev()
@@ -37,6 +39,7 @@ impl Matcher {
                     MatchingMode::Contains => candidate.contains(normalized_query.as_ref()),
                 }
             })
+            .filter(|entry| seen.insert(*entry))
             .take(self.max_suggestions)
             .map(|text| Suggestion { text: text.clone() })
             .collect()
@@ -68,7 +71,21 @@ mod tests {
         let result = matcher.suggest(&entries(), "git");
         assert_eq!(
             result.into_iter().map(|item| item.text).collect::<Vec<_>>(),
-            vec!["git status", "git diff", "git status"]
+            vec!["git status", "git diff"]
+        );
+    }
+
+    #[test]
+    fn applies_limit_after_removing_duplicates() {
+        let entries = ["git status", "git diff", "git checkout", "git status"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+        let matcher = Matcher::new(MatchingMode::Prefix, false, 2);
+        let result = matcher.suggest(&entries, "git");
+        assert_eq!(
+            result.into_iter().map(|item| item.text).collect::<Vec<_>>(),
+            vec!["git status", "git checkout"]
         );
     }
 
