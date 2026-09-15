@@ -180,6 +180,36 @@ fn bash_honors_configured_suggestion_limit() {
 }
 
 #[test]
+fn bash_escape_hides_predictions_for_native_history() {
+    if !supports_writable_readline_line() {
+        eprintln!("skipping Bash integration test: Bash 4+ is required");
+        return;
+    }
+    let binary = env!("CARGO_BIN_EXE_rrsreadline");
+    let history = "git status\necho RRS_BASH_OLDER\ngit log\n";
+    let session = BashSession::spawn(history);
+    let setup = format!(
+        "history -r ~/.bash_history\neval \"$({} init bash)\"\n",
+        shell_single_quote(binary)
+    );
+    session.send_and_drain(setup.as_bytes());
+
+    session.send_and_drain(b"git");
+    session.send_and_drain(b"\x1b");
+    let mut history_output = Vec::new();
+    for _ in 0..3 {
+        history_output.extend(session.send_and_drain(b"\x1b[A"));
+    }
+    let history_text = String::from_utf8_lossy(&history_output);
+    assert!(
+        history_text.contains("git log") && !history_text.contains("❯"),
+        "expected Escape to hide predictions and Up to use native history, got:\n{history_text}"
+    );
+
+    session.send(b"\x03");
+}
+
+#[test]
 fn bash_preserves_native_tab_completion() {
     if !supports_writable_readline_line() {
         eprintln!("skipping Bash integration test: Bash 4+ is required");

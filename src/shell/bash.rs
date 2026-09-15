@@ -30,6 +30,7 @@ _RRSREADLINE_BIN=__RRSREADLINE_BIN__
 _RRSREADLINE_SLOTS=__RRSREADLINE_SLOTS__
 _RRSREADLINE_QUERY=""
 _RRSREADLINE_SELECTED=-1
+_RRSREADLINE_PREDICTIONS_HIDDEN=0
 _RRSREADLINE_BUSY=0
 _RRSREADLINE_SUGGESTIONS=()
 _RRSREADLINE_HISTORY=()
@@ -72,12 +73,12 @@ __rrsreadline_clear() {
 }
 
 __rrsreadline_load_history() {
-    local number command
+    local line
     _RRSREADLINE_HISTORY=()
-    while IFS= read -r number command; do
-        [[ "$number" =~ ^[0-9]+$ ]] || continue
-        _RRSREADLINE_HISTORY[${#_RRSREADLINE_HISTORY[@]}]="$command"
-    done < <(HISTTIMEFORMAT= history)
+    while IFS= read -r line; do
+        [[ -n "$line" && "$line" != \#* ]] || continue
+        _RRSREADLINE_HISTORY[${#_RRSREADLINE_HISTORY[@]}]="$line"
+    done < "${HISTFILE:-$HOME/.bash_history}"
 }
 
 __rrsreadline_native_history() {
@@ -114,11 +115,26 @@ __rrsreadline_native_history() {
 
 __rrsreadline_update() {
     local direction="$1"
+    local show_predictions="${2:-1}"
     if [[ "$direction" == none ]]; then
         _RRSREADLINE_QUERY="${READLINE_LINE:0:READLINE_POINT}"
         _RRSREADLINE_SELECTED=-1
         _RRSREADLINE_HISTORY_QUERY="$READLINE_LINE"
         _RRSREADLINE_HISTORY_INDEX=-1
+    fi
+
+    if [[ "$show_predictions" == 1 ]]; then
+        _RRSREADLINE_PREDICTIONS_HIDDEN=0
+    fi
+
+    if (( _RRSREADLINE_PREDICTIONS_HIDDEN )); then
+        _RRSREADLINE_SUGGESTIONS=()
+        _RRSREADLINE_SELECTED=-1
+        __rrsreadline_clear
+        if [[ "$direction" == up || "$direction" == down ]]; then
+            __rrsreadline_native_history "$direction"
+        fi
+        return
     fi
 
     __rrsreadline_load
@@ -189,6 +205,7 @@ __rrsreadline_down() {
 
 __rrsreadline_escape() {
     _RRSREADLINE_BUSY=1
+    _RRSREADLINE_PREDICTIONS_HIDDEN=1
     _RRSREADLINE_QUERY=""
     _RRSREADLINE_SELECTED=-1
     _RRSREADLINE_SUGGESTIONS=()
@@ -198,11 +215,25 @@ __rrsreadline_escape() {
     _RRSREADLINE_BUSY=0
 }
 
+__rrsreadline_toggle_predictions() {
+    _RRSREADLINE_BUSY=1
+    if (( _RRSREADLINE_PREDICTIONS_HIDDEN )); then
+        _RRSREADLINE_PREDICTIONS_HIDDEN=0
+        __rrsreadline_update none 1
+    else
+        _RRSREADLINE_PREDICTIONS_HIDDEN=1
+        _RRSREADLINE_SELECTED=-1
+        __rrsreadline_clear
+    fi
+    _RRSREADLINE_BUSY=0
+}
+
 __rrsreadline_prompt_reset() {
     _RRSREADLINE_BUSY=0
     __rrsreadline_clear
     _RRSREADLINE_QUERY=""
     _RRSREADLINE_SELECTED=-1
+    _RRSREADLINE_PREDICTIONS_HIDDEN=0
     _RRSREADLINE_SUGGESTIONS=()
     _RRSREADLINE_HISTORY_QUERY=""
     _RRSREADLINE_HISTORY_INDEX=-1
@@ -218,6 +249,7 @@ __rrsreadline_preexec() {
 
 bind 'set bind-tty-special-chars off'
 bind 'set keyseq-timeout 50'
+bind -x '"\e[12~": __rrsreadline_toggle_predictions'
 "#;
 
 fn static_bindings() -> &'static str {
@@ -275,6 +307,8 @@ mod tests {
         assert!(script.contains(r#"bind '"\e[A": "\C-p"'"#));
         assert!(script.contains("PROMPT_COMMAND="));
         assert!(script.contains("suggest --shell bash"));
+        assert!(script.contains("_RRSREADLINE_PREDICTIONS_HIDDEN=0"));
+        assert!(script.contains("__rrsreadline_toggle_predictions"));
     }
 
     #[test]
