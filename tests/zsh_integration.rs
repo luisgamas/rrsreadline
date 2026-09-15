@@ -207,7 +207,7 @@ fn zsh_preserves_completion_matcher_styles() {
     let binary = env!("CARGO_BIN_EXE_rrsreadline");
     let session = ZshSession::spawn("git status\n");
     let setup = format!(
-        "autoload -Uz compinit && compinit\nzstyle ':completion:*' matcher-list 'm:{{a-zA-Z}}={{A-Za-z}}'\neval \"$({} init zsh)\"\n",
+        "autoload -Uz compinit && compinit\nzstyle ':completion:*' menu no\nzstyle ':completion:*' matcher-list 'm:{{a-zA-Z}}={{A-Za-z}}'\neval \"$({} init zsh)\"\n",
         shell_single_quote(binary)
     );
     session.send_and_drain(setup.as_bytes());
