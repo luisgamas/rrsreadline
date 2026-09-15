@@ -82,8 +82,10 @@ ruta absoluta al binario:
 eval "$(/ruta/absoluta/a/rrsreadline/target/release/rrsreadline init zsh)"
 ```
 
-Usa Up/Down para navegar, Tab o Enter para aceptar la sugerencia seleccionada
-y Escape para limpiar la lista.
+Usa Up/Down para navegar, Tab o Enter para aceptar una sugerencia de historial
+seleccionada y Escape para limpiar la lista. Cuando no hay una sugerencia de
+historial seleccionada, Tab conserva el completado nativo de comandos, rutas y
+archivos de Zsh.
 
 La configuración opcional se lee desde
 `~/.config/rrsreadline/config.toml` (para Zsh y Bash):
@@ -117,7 +119,7 @@ eval "$(rrsreadline init bash)"
 ```
 
 Usa Up/Down para navegar y Enter para ejecutar el comando seleccionado. Tab
-conserva la función de completado nativa de Bash.
+conserva el completado nativo de comandos, rutas y archivos de Bash.
 
 ## Desarrollo
 

@@ -36,6 +36,8 @@ impl ZshSession {
         ));
         std::fs::create_dir_all(&fake_home).expect("create fake HOME");
         std::fs::write(fake_home.join(".zsh_history"), history).expect("write zsh history");
+        std::fs::write(fake_home.join("rrsreadline_tab_target"), "")
+            .expect("write completion file");
 
         let winsize = Winsize {
             ws_row: 40,
@@ -137,6 +139,24 @@ fn zsh_can_render_navigate_and_accept_a_suggestion() {
     assert!(
         accepted_text.contains("git log"),
         "expected Tab to accept the selected suggestion, got:\n{accepted_text}"
+    );
+
+    session.send(b"\x03");
+}
+
+#[test]
+fn zsh_preserves_native_tab_completion() {
+    let binary = env!("CARGO_BIN_EXE_rrsreadline");
+    let session = ZshSession::spawn("git status\n");
+    let setup = format!("eval \"$({} init zsh)\"\n", shell_single_quote(binary));
+    session.send_and_drain(setup.as_bytes());
+
+    session.send_and_drain(b"echo ~/rrsreadline_tab_");
+    let completed = session.send_and_drain(b"\t");
+    let completed_text = String::from_utf8_lossy(&completed);
+    assert!(
+        completed_text.contains("target"),
+        "expected native Zsh path completion after Tab, got:\n{completed_text}"
     );
 
     session.send(b"\x03");

@@ -96,6 +96,14 @@ _rrsreadline_accept() {{
     fi
 }}
 
+_rrsreadline_tab() {{
+    if (( _RRSREADLINE_SELECTED >= 0 && _RRSREADLINE_SELECTED < ${{#_RRSREADLINE_SUGGESTIONS}} )); then
+        _rrsreadline_accept
+    else
+        zle .expand-or-complete
+    fi
+}}
+
 _rrsreadline_cancel() {{
     POSTDISPLAY=""
     _RRSREADLINE_SELECTED=-1
@@ -105,15 +113,16 @@ _rrsreadline_cancel() {{
 zle -N up-line-or-history _rrsreadline_up
 zle -N down-line-or-history _rrsreadline_down
 zle -N _rrsreadline_accept _rrsreadline_accept
+zle -N _rrsreadline_tab _rrsreadline_tab
 zle -N accept-line _rrsreadline_accept
 zle -N escape _rrsreadline_cancel
 zle -N zle-line-pre-redraw _rrsreadline_pre_redraw
 bindkey '^[[A' up-line-or-history
 bindkey '^[[B' down-line-or-history
 bindkey '^M' accept-line
-bindkey '^I' _rrsreadline_accept
+bindkey '^I' _rrsreadline_tab
 bindkey '\e' escape
-bindkey '^[[Z' _rrsreadline_accept
+bindkey '^[[Z' reverse-menu-complete
 "#
     )
 }
@@ -131,6 +140,9 @@ mod tests {
         let script = generate();
         assert!(script.contains("zle -N zle-line-pre-redraw"));
         assert!(script.contains("zle -N up-line-or-history"));
+        assert!(script.contains("zle -N _rrsreadline_tab _rrsreadline_tab"));
+        assert!(script.contains("zle .expand-or-complete"));
+        assert!(script.contains("bindkey '^I' _rrsreadline_tab"));
         assert!(script.contains("suggest \"$query\""));
     }
 

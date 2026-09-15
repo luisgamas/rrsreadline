@@ -36,6 +36,8 @@ impl BashSession {
         ));
         std::fs::create_dir_all(&fake_home).expect("create fake HOME");
         std::fs::write(fake_home.join(".bash_history"), history).expect("write bash history");
+        std::fs::write(fake_home.join("rrsreadline_tab_target"), "")
+            .expect("write completion file");
         if let Some(config) = config {
             let config_dir = fake_home.join(".config/rrsreadline");
             std::fs::create_dir_all(&config_dir).expect("create config directory");
@@ -172,6 +174,28 @@ fn bash_honors_configured_suggestion_limit() {
     assert!(
         !typed_text.contains("git one"),
         "expected the configured limit to omit the oldest suggestion, got:\n{typed_text}"
+    );
+
+    session.send(b"\x03");
+}
+
+#[test]
+fn bash_preserves_native_tab_completion() {
+    if !supports_writable_readline_line() {
+        eprintln!("skipping Bash integration test: Bash 4+ is required");
+        return;
+    }
+    let binary = env!("CARGO_BIN_EXE_rrsreadline");
+    let session = BashSession::spawn("git status\n");
+    let setup = format!("eval \"$({} init bash)\"\n", shell_single_quote(binary));
+    session.send_and_drain(setup.as_bytes());
+
+    session.send_and_drain(b"echo ~/rrsreadline_tab_");
+    let completed = session.send_and_drain(b"\t");
+    let completed_text = String::from_utf8_lossy(&completed);
+    assert!(
+        completed_text.contains("target"),
+        "expected native Bash path completion after Tab, got:\n{completed_text}"
     );
 
     session.send(b"\x03");

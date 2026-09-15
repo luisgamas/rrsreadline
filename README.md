@@ -79,8 +79,9 @@ path to the binary:
 eval "$(/absolute/path/to/rrsreadline/target/release/rrsreadline init zsh)"
 ```
 
-Use Up/Down to navigate the list, Tab or Enter to accept the selected
-suggestion, and Escape to clear the list.
+Use Up/Down to navigate the list, Tab or Enter to accept a selected history
+suggestion, and Escape to clear the list. When no history suggestion is
+selected, Tab keeps Zsh's native command, path, and file completion.
 
 Optional configuration is read from
 `~/.config/rrsreadline/config.toml` (for both Zsh and Bash):
@@ -112,7 +113,8 @@ eval "$(rrsreadline init bash)"
 ```
 
 Use Up/Down to navigate suggestions and Enter to submit the selected command.
-Tab remains Bash's native completion key.
+Tab remains Bash's native command, path, and file completion key. Enter accepts
+the selected history suggestion.
 
 ## Development
 
