@@ -19,7 +19,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             matching: MatchingMode::Prefix,
-            max_suggestions: 8,
+            max_suggestions: 10,
             case_sensitive: false,
             history_file: DEFAULT_ZSH_HISTORY_FILE.to_owned(),
         }
@@ -111,7 +111,7 @@ mod tests {
     fn defaults_are_sensible() {
         let config = Config::default();
         assert_eq!(config.matching, MatchingMode::Prefix);
-        assert_eq!(config.max_suggestions, 8);
+        assert_eq!(config.max_suggestions, 10);
         assert!(!config.case_sensitive);
         assert_eq!(config.history_file, DEFAULT_ZSH_HISTORY_FILE);
     }

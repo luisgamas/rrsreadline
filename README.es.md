@@ -64,10 +64,14 @@ La configuración opcional se lee desde
 
 ```toml
 matching = "prefix"
-max_suggestions = 8
+max_suggestions = 10
 case_sensitive = false
 history_file = "~/.zsh_history"
 ```
+
+El valor predeterminado es de 10 sugerencias. Cambia `max_suggestions` para
+modificar el límite. Después de cambiarlo, vuelve a evaluar `rrsreadline init
+bash` en Bash.
 
 ## Bash
 

@@ -3,18 +3,19 @@
 //! Bash does not expose an equivalent to Zsh's `POSTDISPLAY`, so this adapter
 //! uses `bind -x` handlers and a small ANSI suggestion block below the prompt.
 
+use crate::config::Config;
 use std::env;
 
 const PRINTABLE_ASCII: std::ops::RangeInclusive<u8> = 0x20..=0x7e;
 
-pub fn generate() -> String {
+pub fn generate(config: &Config) -> String {
     let executable = env::current_exe()
         .ok()
         .and_then(|path| path.to_str().map(str::to_owned))
         .unwrap_or_else(|| "rrsreadline".to_owned());
     let mut output = BASE_SCRIPT
         .replace("__RRSREADLINE_BIN__", &shell_single_quote(&executable))
-        .replace("__RRSREADLINE_SLOTS__", "8");
+        .replace("__RRSREADLINE_SLOTS__", &config.max_suggestions.to_string());
     output.push_str(static_bindings());
     output.push_str(&character_bindings());
     output.push_str(
@@ -269,7 +270,7 @@ mod tests {
 
     #[test]
     fn generated_script_contains_bash_handlers() {
-        let script = generate();
+        let script = generate(&Config::default());
         assert!(script.contains(r#"bind -x '"\C-p": __rrsreadline_up'"#));
         assert!(script.contains(r#"bind '"\e[A": "\C-p"'"#));
         assert!(script.contains("PROMPT_COMMAND="));
@@ -278,7 +279,7 @@ mod tests {
 
     #[test]
     fn generated_script_has_one_printable_binding_per_character() {
-        let script = generate();
+        let script = generate(&Config::default());
         assert_eq!(
             script
                 .lines()
@@ -288,5 +289,15 @@ mod tests {
                 .count(),
             95
         );
+    }
+
+    #[test]
+    fn generated_script_uses_configured_slot_count() {
+        let config = Config {
+            max_suggestions: 4,
+            ..Config::default()
+        };
+
+        assert!(generate(&config).contains("_RRSREADLINE_SLOTS=4"));
     }
 }

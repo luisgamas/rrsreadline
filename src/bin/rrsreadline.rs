@@ -13,7 +13,7 @@ fn main() {
         Some("--help") | Some("-h") => print_help(),
         Some("init") => match args.next().as_deref() {
             Some("zsh") => print!("{}", zsh::generate()),
-            Some("bash") => print!("{}", bash::generate()),
+            Some("bash") => print!("{}", bash::generate(&Config::load_for_shell("bash"))),
             _ => {
                 print_help();
                 std::process::exit(2);
