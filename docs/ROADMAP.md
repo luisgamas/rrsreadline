@@ -9,6 +9,7 @@
 - [x] Mostrar y navegar sugerencias desde Zsh.
 - [x] Automatizar la prueba Zsh con un pseudo-terminal.
 - [x] Deduplicar comandos repetidos y aplicar el límite después de deduplicar.
+- [x] Separar la vista de predicciones de la navegación del historial nativo.
 - [ ] Añadir carga/escritura atómica del historial.
 
 ## Fase 2 — macOS y Zsh
@@ -16,7 +17,8 @@
 - [x] Definir adaptador ZLE.
 - [x] Mostrar sugerencias debajo del buffer.
 - [x] Navegar y aceptar sugerencias.
-- [ ] Aceptar, cancelar y redimensionar correctamente.
+- [x] Ocultar predicciones con Escape y alternarlas con F2 en Zsh.
+- [ ] Redimensionar correctamente.
 - [ ] Probar en Terminal.app, iTerm2 y terminales compatibles.
 
 ## Fase 3 — Bash

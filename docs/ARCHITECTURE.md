@@ -20,6 +20,9 @@ ofrecer la integración completa. Ambas integraciones tienen pruebas PTY y se
 validan en macOS y Linux mediante CI.
 Cada integración debe vivir en su propio módulo y tener pruebas específicas,
 porque los shells tienen modelos distintos para editar y redibujar la línea.
+La vista de predicciones mantiene un estado visible/oculto: Escape la oculta,
+Up/Down recupera el historial nativo cuando está oculta y F2 permite alternar
+la vista en Zsh sin modificar el buffer.
 
 Windows no es un objetivo inmediato: PSReadLine ya ofrece una solución nativa
 de historial y predicción. El núcleo sigue sin dependencias de Windows para
