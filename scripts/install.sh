@@ -6,11 +6,57 @@ repository="${RRSREADLINE_REPOSITORY:-luisgamas/rrsreadline}"
 version="${RRSREADLINE_VERSION:-latest}"
 home_dir="${HOME:-}"
 install_dir="${RRSREADLINE_INSTALL_DIR:-${home_dir}/.local/bin}"
+shell_mode=auto
+configure_shell=1
+
+usage() {
+    cat <<'EOF'
+Usage: install.sh [--shell auto|zsh|bash|none] [--no-config]
+
+Install the latest prebuilt rrsreadline binary and configure the selected
+interactive shell. The shell configuration is idempotent and is not repeated
+when an rrsreadline integration already exists.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --shell)
+            if [ "$#" -lt 2 ]; then
+                printf '%s\n' 'rrsreadline: --shell requires auto, zsh, bash, or none.' >&2
+                exit 2
+            fi
+            shell_mode="$2"
+            shift 2
+            ;;
+        --no-config)
+            configure_shell=0
+            shift
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        *)
+            printf 'rrsreadline: unknown option: %s\n' "$1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
 
 if [ -z "$home_dir" ] && [ -z "${RRSREADLINE_INSTALL_DIR:-}" ]; then
     printf '%s\n' 'rrsreadline: HOME is not set; use RRSREADLINE_INSTALL_DIR.' >&2
     exit 1
 fi
+
+case "$shell_mode" in
+    auto|zsh|bash|none) ;;
+    *)
+        printf 'rrsreadline: unsupported shell: %s\n' "$shell_mode" >&2
+        exit 2
+        ;;
+esac
 
 if ! command -v curl >/dev/null 2>&1; then
     printf '%s\n' 'rrsreadline: curl is required.' >&2
@@ -93,4 +139,121 @@ case ":${PATH:-}:" in
     *":$install_dir:"*) ;;
     *) printf 'Add %s to PATH if it is not already included.\n' "$install_dir" ;;
 esac
-printf '%s\n' 'Then enable a shell integration with: rrsreadline init zsh or rrsreadline init bash'
+
+normalize_shell_name() {
+    candidate=$1
+    candidate=$(printf '%s' "$candidate" | sed 's|.*/||; s/^-//')
+    case "$candidate" in
+        zsh|bash) printf '%s\n' "$candidate" ;;
+        *) printf '%s\n' '' ;;
+    esac
+}
+
+detect_shell() {
+    parent_shell=$(ps -p "$PPID" -o comm= 2>/dev/null || true)
+    detected=$(normalize_shell_name "$parent_shell")
+    if [ -n "$detected" ]; then
+        printf '%s\n' "$detected"
+        return
+    fi
+
+    login_shell=$(normalize_shell_name "${SHELL-}")
+    printf '%s\n' "$login_shell"
+}
+
+shell_quote() {
+    value=$1
+    value=$(printf '%s' "$value" | sed "s/'/'\\\\''/g")
+    printf "'%s'\n" "$value"
+}
+
+configure_shell() {
+    selected_shell=$1
+    binary_path="$install_dir/rrsreadline"
+    quoted_binary=$(shell_quote "$binary_path")
+    quoted_install_dir=$(shell_quote "$install_dir")
+
+    case "$selected_shell" in
+        zsh)
+            config_file="$home_dir/.zshrc"
+            ;;
+        bash)
+            bash_major=$(bash -c 'printf "%s" "${BASH_VERSINFO[0]}"' 2>/dev/null || printf '0')
+            case "$bash_major" in
+                0|1|2|3)
+                    printf '%s\n' 'rrsreadline: Bash 4 or newer is required for shell integration.' >&2
+                    printf '%s\n' 'The binary was installed, but the Bash startup file was not changed.' >&2
+                    return
+                    ;;
+            esac
+            if [ "$os" = Darwin ]; then
+                config_file="$home_dir/.bash_profile"
+            else
+                config_file="$home_dir/.bashrc"
+            fi
+            ;;
+        none)
+            return
+            ;;
+    esac
+
+    if [ -z "$home_dir" ]; then
+        printf '%s\n' 'rrsreadline: HOME is required to configure a shell.' >&2
+        return
+    fi
+
+    integration_pattern="init $selected_shell)"
+    marker_pattern="# >>> rrsreadline initialize >>>"
+    if [ -f "$config_file" ] && {
+        grep -Fq "$integration_pattern" "$config_file" ||
+        grep -Fq "$marker_pattern" "$config_file"
+    }; then
+        printf 'Shell integration already exists in %s; no duplicate was added.\n' "$config_file"
+        return
+    fi
+
+    config_dir=$(dirname "$config_file")
+    mkdir -p "$config_dir"
+    temporary_config=$(mktemp "$config_file.rrsreadline.XXXXXX")
+    if [ -f "$config_file" ]; then
+        if [ ! -e "$config_file.rrsreadline.bak" ]; then
+            cp -p "$config_file" "$config_file.rrsreadline.bak"
+        fi
+        cat "$config_file" > "$temporary_config"
+    fi
+
+    path_line=$(printf 'export PATH=%s:$PATH' "$quoted_install_dir")
+    integration_line=$(printf 'eval "$(%s init %s)"' "$quoted_binary" "$selected_shell")
+    printf '\n# >>> rrsreadline initialize >>>\n%s\n%s\n# <<< rrsreadline initialize <<<\n' \
+        "$path_line" "$integration_line" >> "$temporary_config"
+
+    if [ -f "$config_file" ]; then
+        if [ "$os" = Darwin ]; then
+            config_mode=$(stat -f '%Lp' "$config_file" 2>/dev/null || true)
+        else
+            config_mode=$(stat -c '%a' "$config_file" 2>/dev/null || true)
+        fi
+        if [ -n "$config_mode" ]; then
+            chmod "$config_mode" "$temporary_config"
+        fi
+    fi
+    mv "$temporary_config" "$config_file"
+    printf 'Configured %s integration in %s.\n' "$selected_shell" "$config_file"
+    printf 'Open a new terminal, or run: . %s\n' "$config_file"
+}
+
+if [ "$configure_shell" -eq 1 ]; then
+    if [ "$shell_mode" = auto ]; then
+        shell_mode=$(detect_shell)
+    fi
+    if [ -z "$shell_mode" ]; then
+        printf '%s\n' 'Could not detect Zsh or Bash; the binary was installed without shell configuration.' >&2
+        printf '%s\n' 'Re-run with --shell zsh or --shell bash.' >&2
+    elif [ "$shell_mode" = none ]; then
+        printf '%s\n' 'Shell configuration skipped (--shell none).'
+    else
+        configure_shell "$shell_mode"
+    fi
+else
+    printf '%s\n' 'Shell configuration skipped (--no-config).'
+fi
