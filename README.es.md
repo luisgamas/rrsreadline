@@ -44,8 +44,9 @@ seguirá siendo portable por si más adelante resulta útil crear esa integraci�
 
 ### Binario precompilado
 
-El instalador descarga el binario de release para macOS o Linux, verifica su
-checksum SHA-256 y lo instala en `~/.local/bin` sin requerir Rust:
+El instalador detecta tu shell padre, descarga el binario de release para
+macOS o Linux, verifica su checksum SHA-256, lo instala en `~/.local/bin` y
+configura el archivo de inicio del shell sin requerir Rust:
 
 ```sh
 curl --fail --silent --show-error --location \
@@ -53,9 +54,22 @@ curl --fail --silent --show-error --location \
   | sh
 ```
 
-Usa `RRSREADLINE_VERSION=vX.Y.Z` para instalar una versión específica o
-`RRSREADLINE_INSTALL_DIR=/ruta/personalizada` para elegir otro destino. El
-instalador no modifica los archivos de inicio del shell.
+Después abre una nueva terminal. El instalador añade un bloque idempotente y
+marcado a `~/.zshrc` para Zsh, `~/.bashrc` para Bash en Linux o
+`~/.bash_profile` para Bash en macOS. Antes de modificarlo crea una copia de
+respaldo en `<archivo-de-inicio>.rrsreadline.bak` y nunca añade un segundo
+bloque de integración.
+
+Usa `--shell zsh` o `--shell bash` si la detección automática no está
+disponible. Usa `--no-config` para instalar únicamente el binario. Define
+`RRSREADLINE_VERSION=vX.Y.Z` para instalar una versión específica o
+`RRSREADLINE_INSTALL_DIR=/ruta/personalizada` para elegir otro destino:
+
+```sh
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/luisgamas/rrsreadline/main/scripts/install.sh \
+  | sh -s -- --shell zsh
+```
 
 ### Compilar desde el código fuente
 

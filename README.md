@@ -42,8 +42,9 @@ Windows integration can be added if a native implementation becomes useful.
 
 ### Prebuilt binary
 
-The installer downloads the release binary for macOS or Linux, verifies its
-SHA-256 checksum, and installs it into `~/.local/bin` without requiring Rust:
+The installer detects your parent shell, downloads the release binary for
+macOS or Linux, verifies its SHA-256 checksum, installs it into
+`~/.local/bin`, and configures the shell startup file without requiring Rust:
 
 ```sh
 curl --fail --silent --show-error --location \
@@ -51,9 +52,22 @@ curl --fail --silent --show-error --location \
   | sh
 ```
 
-Set `RRSREADLINE_VERSION=vX.Y.Z` to install a specific release or
-`RRSREADLINE_INSTALL_DIR=/custom/path` to choose another destination. The
-installer does not modify shell startup files.
+Open a new terminal after installation. The installer adds an idempotent,
+marked block to `~/.zshrc` for Zsh, `~/.bashrc` for Bash on Linux, or
+`~/.bash_profile` for Bash on macOS. It creates a
+`<startup-file>.rrsreadline.bak` backup before the first modification and never
+adds a second integration block.
+
+Use `--shell zsh` or `--shell bash` when automatic detection is unavailable.
+Use `--no-config` to install only the binary. Set `RRSREADLINE_VERSION=vX.Y.Z`
+to install a specific release or `RRSREADLINE_INSTALL_DIR=/custom/path` to
+choose another destination:
+
+```sh
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/luisgamas/rrsreadline/main/scripts/install.sh \
+  | sh -s -- --shell zsh
+```
 
 ### Build from source
 
