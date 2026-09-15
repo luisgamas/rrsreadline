@@ -100,7 +100,7 @@ _rrsreadline_tab() {{
     if (( _RRSREADLINE_SELECTED >= 0 && _RRSREADLINE_SELECTED < ${{#_RRSREADLINE_SUGGESTIONS}} )); then
         _rrsreadline_accept
     else
-        zle .expand-or-complete
+        zle expand-or-complete
     fi
 }}
 
@@ -141,7 +141,7 @@ mod tests {
         assert!(script.contains("zle -N zle-line-pre-redraw"));
         assert!(script.contains("zle -N up-line-or-history"));
         assert!(script.contains("zle -N _rrsreadline_tab _rrsreadline_tab"));
-        assert!(script.contains("zle .expand-or-complete"));
+        assert!(script.contains("zle expand-or-complete"));
         assert!(script.contains("bindkey '^I' _rrsreadline_tab"));
         assert!(script.contains("suggest \"$query\""));
     }

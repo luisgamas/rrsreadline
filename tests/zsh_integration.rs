@@ -38,6 +38,7 @@ impl ZshSession {
         std::fs::write(fake_home.join(".zsh_history"), history).expect("write zsh history");
         std::fs::write(fake_home.join("rrsreadline_tab_target"), "")
             .expect("write completion file");
+        std::fs::create_dir(fake_home.join("Documents")).expect("create Documents directory");
 
         let winsize = Winsize {
             ws_row: 40,
@@ -60,6 +61,7 @@ impl ZshSession {
                     std::env::set_var("HOME", &fake_home);
                     std::env::set_var("TERM", "xterm-256color");
                 }
+                std::env::set_current_dir(&fake_home).expect("change to fake HOME");
                 let zsh = CString::new("zsh").expect("no NUL");
                 let no_rc = CString::new("-f").expect("no NUL");
                 let _ = execvp(&zsh, &[zsh.clone(), no_rc]);
@@ -157,6 +159,29 @@ fn zsh_preserves_native_tab_completion() {
     assert!(
         completed_text.contains("target"),
         "expected native Zsh path completion after Tab, got:\n{completed_text}"
+    );
+
+    session.send(b"\x03");
+}
+
+#[test]
+fn zsh_preserves_completion_matcher_styles() {
+    let binary = env!("CARGO_BIN_EXE_rrsreadline");
+    let session = ZshSession::spawn("git status\n");
+    let setup = format!(
+        "zstyle ':completion:*' matcher-list 'm:{{a-zA-Z}}={{A-Za-z}}'\nautoload -Uz compinit && compinit\neval \"$({} init zsh)\"\n",
+        shell_single_quote(binary)
+    );
+    session.send_and_drain(setup.as_bytes());
+
+    session.send_and_drain(b"cd doc");
+    session.send_and_drain(b"\t");
+    session.send_and_drain(b"\r");
+    let working_directory = session.send_and_drain(b"pwd\r");
+    let working_directory_text = String::from_utf8_lossy(&working_directory);
+    assert!(
+        working_directory_text.contains("Documents"),
+        "expected the configured case-insensitive matcher to complete Documents, got:\n{working_directory_text}"
     );
 
     session.send(b"\x03");
