@@ -215,19 +215,6 @@ __rrsreadline_escape() {
     _RRSREADLINE_BUSY=0
 }
 
-__rrsreadline_toggle_predictions() {
-    _RRSREADLINE_BUSY=1
-    if (( _RRSREADLINE_PREDICTIONS_HIDDEN )); then
-        _RRSREADLINE_PREDICTIONS_HIDDEN=0
-        __rrsreadline_update none 1
-    else
-        _RRSREADLINE_PREDICTIONS_HIDDEN=1
-        _RRSREADLINE_SELECTED=-1
-        __rrsreadline_clear
-    fi
-    _RRSREADLINE_BUSY=0
-}
-
 __rrsreadline_prompt_reset() {
     _RRSREADLINE_BUSY=0
     __rrsreadline_clear
@@ -249,7 +236,6 @@ __rrsreadline_preexec() {
 
 bind 'set bind-tty-special-chars off'
 bind 'set keyseq-timeout 50'
-bind -x '"\e[12~": __rrsreadline_toggle_predictions'
 "#;
 
 fn static_bindings() -> &'static str {
@@ -308,7 +294,6 @@ mod tests {
         assert!(script.contains("PROMPT_COMMAND="));
         assert!(script.contains("suggest --shell bash"));
         assert!(script.contains("_RRSREADLINE_PREDICTIONS_HIDDEN=0"));
-        assert!(script.contains("__rrsreadline_toggle_predictions"));
     }
 
     #[test]
